@@ -146,6 +146,7 @@ namespace Subtitution
             Utils.CreateUDF(oSBOCompany, "@SOL_COMP_LOG", "SOL_ITMNAME", "Alternative Item Name", BoFieldTypes.db_Alpha, BoFldSubTypes.st_None, 100);
             Utils.CreateUDF(oSBOCompany, "@SOL_COMP_LOG", "SOL_COMPQTY", "Component Planned Qty", BoFieldTypes.db_Float, BoFldSubTypes.st_Quantity, 11);
             Utils.CreateUDF(oSBOCompany, "@SOL_COMP_LOG", "SOL_ALTQTY", "Alternative Planned Qty", BoFieldTypes.db_Float, BoFldSubTypes.st_Quantity, 11);
+            Utils.CreateUDF(oSBOCompany, "@SOL_COMP_LOG", "SOL_SELECTED", "Selected", BoFieldTypes.db_Alpha, BoFldSubTypes.st_None, 1);
             #endregion
 
             #region Bill of Material
@@ -167,12 +168,12 @@ namespace Subtitution
         private void CreateUDO_AltItem()
         {
             Utils.UDOChild child = new Utils.UDOChild("SOL_ALTITEM_D");
-            Utils.UDOChild[] childs = { child};
+            Utils.UDOChild[] childs = { child };
 
-            string[] FormColumnAlias = { "Code", "Name"};
-            string[] FormColumnDescription = { "Item Code", "Item Name"};
+            string[] FormColumnAlias = { "Code", "Name" };
+            string[] FormColumnDescription = { "Item Code", "Item Name" };
 
-            SAPbobsCOM.BoYesNoEnum[] FormColumnsEditable = { BoYesNoEnum.tYES, BoYesNoEnum.tYES, BoYesNoEnum.tYES};
+            SAPbobsCOM.BoYesNoEnum[] FormColumnsEditable = { BoYesNoEnum.tYES, BoYesNoEnum.tYES, BoYesNoEnum.tYES };
 
             Utils.CreateUDOTemplate(oSBOCompany, "ALTITEM", "Alternative Item Master Data", BoUDOObjType.boud_MasterData, "SOL_ALTITEM_H"
                               , BoYesNoEnum.tYES, BoYesNoEnum.tYES, BoYesNoEnum.tNO, BoYesNoEnum.tNO, BoYesNoEnum.tNO
@@ -193,7 +194,7 @@ namespace Subtitution
         private void CreateUDO_UpBomVer()
         {
             string[] FormColumnAlias = { "U_SOL_UPDATE", "U_SOL_UPTIME" };
-            string[] FormColumnDescription = {"Last Update Date", "Last Update Time" };
+            string[] FormColumnDescription = { "Last Update Date", "Last Update Time" };
 
             SAPbobsCOM.BoYesNoEnum[] FormColumnsEditable = { BoYesNoEnum.tNO, BoYesNoEnum.tNO };
 
@@ -257,15 +258,38 @@ namespace Subtitution
             Utils.CreateFMS(oSBOCompany, queryCategory, "SOL - ALTERNATIVE ITEM - Item Code", "COMPITM", "tComItmCd", BoYesNoEnum.tNO, BoYesNoEnum.tNO, BoYesNoEnum.tNO);
             Utils.CreateFMS(oSBOCompany, queryCategory, "SOL - ALTERNATIVE ITEM - Item Code", "COMPITM", "tAltItmCd", BoYesNoEnum.tNO, BoYesNoEnum.tNO, BoYesNoEnum.tNO);
         }
-        
+
         #endregion
 
+        #region Create SP
         /// <summary>
         /// Create Stored Procedure (SP) - load from file
         /// </summary>
         private void CreateSP()
         {
+            CreateSP_ChangeCompItm();
         }
+
+        /// <summary>
+        /// SP - change component item
+        /// </summary>
+        public void CreateSP_ChangeCompItm()
+        {
+            try
+            {
+                if (oSBOCompany.DbServerType == BoDataServerTypes.dst_HANADB)
+                {
+                    Utils.CreateSP(ref oSBOCompany, ref oSBOApplication, "HANA - SOL_SP_COMPITEM_FIND.sql", "SOL_SP_COMPITEM_FIND");
+                    Utils.CreateSP(ref oSBOCompany, ref oSBOApplication, "HANA - SOL_SP_COMPITEM_LOG_CODE.sql", "SOL_SP_COMPITEM_LOG_CODE");
+                }
+            }
+            catch (Exception ex)
+            {
+                oSBOApplication.MessageBox(ex.Message);
+            }
+        }
+
+        #endregion
 
         #region SBO Event Handler
         private void SBOApplication_AppEvent(SAPbouiCOM.BoAppEventTypes EventType)
