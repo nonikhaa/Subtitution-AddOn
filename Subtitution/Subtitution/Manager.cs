@@ -250,13 +250,15 @@ namespace Subtitution
             if (oSBOCompany.DbServerType == BoDataServerTypes.dst_HANADB)
             {
                 Utils.CreateQueryFromText(oSBOCompany, oSBOApplication, queryCategory, "SOL - ALTERNATIVE ITEM - Item Code", "HANA - SOL - ALTERNATIVE ITEM - Item Code.sql");
+                Utils.CreateQueryFromText(oSBOCompany, oSBOApplication, queryCategory, "SOL - CHANGE COMPONENT ITEM - Component Item Code", "HANA - SOL - CHANGE COMPONENT ITEM - Component Item Code.sql");
+                Utils.CreateQueryFromText(oSBOCompany, oSBOApplication, queryCategory, "SOL - CHANGE COMPONENT ITEM - Alternative Item Code", "HANA - SOL - CHANGE COMPONENT ITEM - Alternative Item Code.sql");
             }
 
             Utils.CreateFMS(oSBOCompany, queryCategory, "SOL - ALTERNATIVE ITEM - Item Code", "ALTITEM", "tCode", BoYesNoEnum.tNO, BoYesNoEnum.tNO, BoYesNoEnum.tNO);
             Utils.CreateFMS(oSBOCompany, queryCategory, "SOL - ALTERNATIVE ITEM - Item Code", "ALTITEM", "mt_1", BoYesNoEnum.tNO, BoYesNoEnum.tNO, BoYesNoEnum.tNO, "cItmCd");
 
-            Utils.CreateFMS(oSBOCompany, queryCategory, "SOL - ALTERNATIVE ITEM - Item Code", "COMPITM", "tComItmCd", BoYesNoEnum.tNO, BoYesNoEnum.tNO, BoYesNoEnum.tNO);
-            Utils.CreateFMS(oSBOCompany, queryCategory, "SOL - ALTERNATIVE ITEM - Item Code", "COMPITM", "tAltItmCd", BoYesNoEnum.tNO, BoYesNoEnum.tNO, BoYesNoEnum.tNO);
+            Utils.CreateFMS(oSBOCompany, queryCategory, "SOL - CHANGE COMPONENT ITEM - Component Item Code", "COMPITM", "tComItmCd", BoYesNoEnum.tNO, BoYesNoEnum.tNO, BoYesNoEnum.tNO);
+            Utils.CreateFMS(oSBOCompany, queryCategory, "SOL - CHANGE COMPONENT ITEM - Alternative Item Code", "COMPITM", "tAltItmCd", BoYesNoEnum.tNO, BoYesNoEnum.tNO, BoYesNoEnum.tNO);
         }
 
         #endregion

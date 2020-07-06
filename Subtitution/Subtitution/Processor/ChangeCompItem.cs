@@ -284,6 +284,9 @@ namespace Subtitution.Processor
             oMtx.Columns.Item("cAltQty").Editable = value;
         }
 
+        /// <summary>
+        /// Click button replace
+        /// </summary>
         private void ChangeCompItm_Replace(string formUID, ref ItemEvent pVal, ref bool bubbleEvent)
         {
             if (bubbleEvent)
@@ -309,7 +312,6 @@ namespace Subtitution.Processor
                     {
                         for (int i = 1; i <= oMtx.RowCount; i++)
                         {
-                            //dtSource.Offset = dtSource.Size - 1;
                             string check = string.Empty;
                             if (oMtx.Columns.Item("cCheck").Cells.Item(i).Specific.Checked == true)
                                 check = "Y";
