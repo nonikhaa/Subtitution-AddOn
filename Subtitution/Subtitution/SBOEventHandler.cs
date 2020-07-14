@@ -77,7 +77,7 @@ namespace Subtitution
                 {
                     case "89111": altItem.MenuEvent_AltItem(ref pVal, out BubbleEvent); break;
                     case "89222": chgCompItem.MenuEvent_ChangeCompItm(ref pVal, out BubbleEvent); break;
-                    case "89333": updtBomVer.MenuEvent_ChangeCompItm(ref pVal, out BubbleEvent); break;
+                    case "89333": updtBomVer.MenuEvent_UpdateBomVer(ref pVal, out BubbleEvent); break;
 
                     case "AltItemAdd": altItem.MenuEvent_AltItemAdd(ref pVal, ref BubbleEvent); break;
                     case "AltItemDel": altItem.MenuEvent_AltItemDel(ref pVal, ref BubbleEvent); break;
@@ -123,6 +123,7 @@ namespace Subtitution
             bubbleEvent = true;
             AlternativeItem altItem = new AlternativeItem(oSBOApplication, oSBOCompany);
             ChangeCompItem changeCompItm = new ChangeCompItem(oSBOApplication, oSBOCompany);
+            UpdateBomVer updateBom = new UpdateBomVer(oSBOApplication, oSBOCompany);
 
             try
             {
@@ -132,6 +133,7 @@ namespace Subtitution
                     {
                         case "ALTITEM": altItem.ItemEvent_AltItem(FormUID, ref pVal, ref bubbleEvent); break;
                         case "COMPITM": changeCompItm.ItemEvent_ChangeCompItm(FormUID, ref pVal, ref bubbleEvent); break;
+                        case "UPBOMVER": updateBom.ItemEvent_UpdateBomVer(FormUID, ref pVal, ref bubbleEvent); break;
                     }
                 }
             }

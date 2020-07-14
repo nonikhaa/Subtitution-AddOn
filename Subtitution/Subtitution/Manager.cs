@@ -162,7 +162,7 @@ namespace Subtitution
         {
             CreateUDO_AltItem();
             CreateUDO_ChangeCompItem();
-            //CreateUDO_UpBomVer();
+            CreateUDO_UpBomVer();
         }
 
         private void CreateUDO_AltItem()
@@ -193,16 +193,11 @@ namespace Subtitution
 
         private void CreateUDO_UpBomVer()
         {
-            string[] FormColumnAlias = { "U_SOL_UPDATE", "U_SOL_UPTIME" };
-            string[] FormColumnDescription = { "Last Update Date", "Last Update Time" };
-
-            SAPbobsCOM.BoYesNoEnum[] FormColumnsEditable = { BoYesNoEnum.tNO, BoYesNoEnum.tNO };
-
             Utils.CreateUDOTemplate(oSBOCompany, "UPBOMVER", "Update BOM Version", BoUDOObjType.boud_MasterData, "SOL_UPBOMVER_H"
                               , BoYesNoEnum.tNO, BoYesNoEnum.tNO, BoYesNoEnum.tNO, BoYesNoEnum.tNO, BoYesNoEnum.tNO
                               , BoYesNoEnum.tNO, BoYesNoEnum.tNO, BoYesNoEnum.tNO, BoYesNoEnum.tNO, BoYesNoEnum.tYES
-                              , "ASOL_UPBOMVER_H", null, null, 0, 0, FormColumnAlias, FormColumnDescription, FormColumnAlias
-                              , FormColumnDescription, FormColumnsEditable, null);
+                              , "ASOL_UPBOMVER_H", null, null, 0, 0, null, null, null
+                              , null, null, null);
         }
 
         #endregion
@@ -270,12 +265,13 @@ namespace Subtitution
         private void CreateSP()
         {
             CreateSP_ChangeCompItm();
+            CreateSP_UpdateBom();
         }
 
         /// <summary>
         /// SP - change component item
         /// </summary>
-        public void CreateSP_ChangeCompItm()
+        private void CreateSP_ChangeCompItm()
         {
             try
             {
@@ -283,6 +279,27 @@ namespace Subtitution
                 {
                     Utils.CreateSP(ref oSBOCompany, ref oSBOApplication, "HANA - SOL_SP_COMPITEM_FIND.sql", "SOL_SP_COMPITEM_FIND");
                     Utils.CreateSP(ref oSBOCompany, ref oSBOApplication, "HANA - SOL_SP_COMPITEM_LOG_CODE.sql", "SOL_SP_COMPITEM_LOG_CODE");
+                }
+            }
+            catch (Exception ex)
+            {
+                oSBOApplication.MessageBox(ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// SP - Update bom version
+        /// </summary>
+        private void CreateSP_UpdateBom()
+        {
+            try
+            {
+                if (oSBOCompany.DbServerType == BoDataServerTypes.dst_HANADB)
+                {
+                    Utils.CreateSP(ref oSBOCompany, ref oSBOApplication, "HANA - SOL_SP_UPDTBOM_CODE.sql", "SOL_SP_UPDTBOM_CODE");
+                    Utils.CreateSP(ref oSBOCompany, ref oSBOApplication, "HANA - SOL_SP_UPDTBOM_GETDIFFBOM.sql", "SOL_SP_UPDTBOM_GETDIFFBOM");
+                    Utils.CreateSP(ref oSBOCompany, ref oSBOApplication, "HANA - SOL_SP_UPDTBOM_GETBOM.sql", "SOL_SP_UPDTBOM_GETBOM");
+                    Utils.CreateSP(ref oSBOCompany, ref oSBOApplication, "HANA - SOL_SP_BOMVER_VERSION_CODE.sql", "SOL_SP_BOMVER_VERSION_CODE");
                 }
             }
             catch (Exception ex)

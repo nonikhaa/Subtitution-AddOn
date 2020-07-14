@@ -210,62 +210,71 @@ namespace Subtitution.Processor
         {
             if (bubbleEvent)
             {
-                if (pVal.BeforeAction == false && pVal.ActionSuccess == true)// && pVal.EventType == BoEventTypes.et_CLICK)
+                if (pVal.BeforeAction == false && pVal.ActionSuccess == true)
                 {
-                    Form oForm = oSBOApplication.Forms.Item(formUID);
-                    oForm.Freeze(true);
-
-                    Recordset oRec = oSBOCompany.GetBusinessObject(BoObjectTypes.BoRecordset);
-                    Matrix oMtx = oForm.Items.Item("mt_1").Specific;
-                    string compItm = oForm.Items.Item("tComItmCd").Specific.Value;
-                    string altItm = oForm.Items.Item("tAltItmCd").Specific.Value;
-                    string startDate = oForm.Items.Item("tStrDt").Specific.Value;
-                    string endDate = oForm.Items.Item("tEndDt").Specific.Value;
-
-                    ProgressBar oProgressBar = oSBOApplication.StatusBar.CreateProgressBar("Find Work Order", oMtx.RowCount, true);
-                    oProgressBar.Text = "Find Work Order...";
-
-                    try
+                    // Check validation
+                    string errorMsg = string.Empty;
+                    if (IsBlockFind(formUID, out errorMsg))
                     {
-                        string query = string.Empty;
-                        if (oSBOCompany.DbServerType == BoDataServerTypes.dst_HANADB)
-                        {
-                            query = "CALL SOL_SP_COMPITEM_FIND('" + compItm + "', '" + altItm + "', '" + startDate + "', '" + endDate + "')";
-                        }
+                        oSBOApplication.StatusBar.SetText(errorMsg, SAPbouiCOM.BoMessageTime.bmt_Short, SAPbouiCOM.BoStatusBarMessageType.smt_Error);
+                    }
+                    else
+                    {
+                        Form oForm = oSBOApplication.Forms.Item(formUID);
+                        oForm.Freeze(true);
 
-                        oRec.DoQuery(query);
+                        Recordset oRec = oSBOCompany.GetBusinessObject(BoObjectTypes.BoRecordset);
+                        Matrix oMtx = oForm.Items.Item("mt_1").Specific;
+                        string compItm = oForm.Items.Item("tComItmCd").Specific.Value;
+                        string altItm = oForm.Items.Item("tAltItmCd").Specific.Value;
+                        string startDate = oForm.Items.Item("tStrDt").Specific.Value;
+                        string endDate = oForm.Items.Item("tEndDt").Specific.Value;
 
-                        if (oRec.RecordCount > 0)
+                        ProgressBar oProgressBar = oSBOApplication.StatusBar.CreateProgressBar("Find Work Order", oMtx.RowCount, true);
+                        oProgressBar.Text = "Find Work Order...";
+
+                        try
                         {
-                            EnableDisableMatrix(true, ref oMtx);
-                            for (int i = 1; i <= oRec.RecordCount; i++)
+                            string query = string.Empty;
+                            if (oSBOCompany.DbServerType == BoDataServerTypes.dst_HANADB)
                             {
-                                oMtx.AddRow();
-                                int currentRow = oMtx.RowCount;
-
-                                oMtx.Columns.Item("cCheck").Cells.Item(i).Specific.Checked = true;
-                                oMtx.Columns.Item("cFgCode").Cells.Item(i).Specific.Value = oRec.Fields.Item("ItemCode").Value;
-                                oMtx.Columns.Item("cFgName").Cells.Item(i).Specific.Value = oRec.Fields.Item("ProdName").Value;
-                                oMtx.Columns.Item("cNoWo").Cells.Item(i).Specific.Value = oRec.Fields.Item("DocNum").Value;
-                                oMtx.Columns.Item("cComQty").Cells.Item(i).Specific.Value = oRec.Fields.Item("PlannedQty").Value;
-                                oMtx.Columns.Item("cAltQty").Cells.Item(i).Specific.Value = oRec.Fields.Item("Alternative Qty").Value;
+                                query = "CALL SOL_SP_COMPITEM_FIND('" + compItm + "', '" + altItm + "', '" + startDate + "', '" + endDate + "')";
                             }
-                            oForm.Items.Item("tAltItmCd").Click();
-                            EnableDisableMatrix(false, ref oMtx);
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        oSBOApplication.MessageBox(ex.Message);
-                    }
-                    finally
-                    {
-                        oProgressBar.Stop();
-                        if (oForm != null) oForm.Freeze(false);
 
-                        Utils.releaseObject(oForm);
-                        Utils.releaseObject(oMtx);
-                        Utils.releaseObject(oRec);
+                            oRec.DoQuery(query);
+
+                            if (oRec.RecordCount > 0)
+                            {
+                                EnableDisableMatrix(true, ref oMtx);
+                                for (int i = 1; i <= oRec.RecordCount; i++)
+                                {
+                                    oMtx.AddRow();
+                                    int currentRow = oMtx.RowCount;
+
+                                    oMtx.Columns.Item("cCheck").Cells.Item(i).Specific.Checked = true;
+                                    oMtx.Columns.Item("cFgCode").Cells.Item(i).Specific.Value = oRec.Fields.Item("ItemCode").Value;
+                                    oMtx.Columns.Item("cFgName").Cells.Item(i).Specific.Value = oRec.Fields.Item("ProdName").Value;
+                                    oMtx.Columns.Item("cNoWo").Cells.Item(i).Specific.Value = oRec.Fields.Item("DocNum").Value;
+                                    oMtx.Columns.Item("cComQty").Cells.Item(i).Specific.Value = oRec.Fields.Item("PlannedQty").Value;
+                                    oMtx.Columns.Item("cAltQty").Cells.Item(i).Specific.Value = oRec.Fields.Item("Alternative Qty").Value;
+                                }
+                                oForm.Items.Item("tAltItmCd").Click();
+                                EnableDisableMatrix(false, ref oMtx);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            oSBOApplication.MessageBox(ex.Message);
+                        }
+                        finally
+                        {
+                            oProgressBar.Stop();
+                            if (oForm != null) oForm.Freeze(false);
+
+                            Utils.releaseObject(oForm);
+                            Utils.releaseObject(oMtx);
+                            Utils.releaseObject(oRec);
+                        }
                     }
                 }
             }
@@ -293,86 +302,102 @@ namespace Subtitution.Processor
             {
                 if (pVal.BeforeAction == false && pVal.ActionSuccess == true)// && pVal.EventType == BoEventTypes.et_CLICK)
                 {
-                    Form oForm = oSBOApplication.Forms.Item(formUID);
-                    oForm.Freeze(true);
-
-                    SAPbobsCOM.ProductionOrders oProd;
-                    oProd = oSBOCompany.GetBusinessObject(BoObjectTypes.oProductionOrders);
-
-                    SAPbobsCOM.GeneralService oGenService = oSBOCompany.GetCompanyService().GetGeneralService("COMPITM");
-                    SAPbobsCOM.GeneralData compLog = (SAPbobsCOM.GeneralData)oGenService.GetDataInterface(GeneralServiceDataInterfaces.gsGeneralData);
-
-                    Recordset oRec = oSBOCompany.GetBusinessObject(BoObjectTypes.BoRecordset);
-                    Matrix oMtx = oForm.Items.Item("mt_1").Specific;
-
-                    ProgressBar oProgressBar = oSBOApplication.StatusBar.CreateProgressBar("Replace Work Order", oMtx.RowCount, true);
-                    oProgressBar.Text = "Replace Work Order...";
-
-                    try
+                    // Checkk Validation
+                    string errorMsg = string.Empty;
+                    if(IsBlocReplace(formUID, out errorMsg))
                     {
-                        for (int i = 1; i <= oMtx.RowCount; i++)
+                        oSBOApplication.StatusBar.SetText(errorMsg, SAPbouiCOM.BoMessageTime.bmt_Short, SAPbouiCOM.BoStatusBarMessageType.smt_Error);
+                    }
+                    else
+                    {
+                        Form oForm = oSBOApplication.Forms.Item(formUID);
+                        oForm.Freeze(true);
+
+                        SAPbobsCOM.ProductionOrders oProd;
+                        oProd = oSBOCompany.GetBusinessObject(BoObjectTypes.oProductionOrders);
+
+                        SAPbobsCOM.GeneralService oGenService = oSBOCompany.GetCompanyService().GetGeneralService("COMPITM");
+                        SAPbobsCOM.GeneralData compLog = (SAPbobsCOM.GeneralData)oGenService.GetDataInterface(GeneralServiceDataInterfaces.gsGeneralData);
+
+                        Recordset oRec = oSBOCompany.GetBusinessObject(BoObjectTypes.BoRecordset);
+                        Matrix oMtx = oForm.Items.Item("mt_1").Specific;
+
+                        ProgressBar oProgressBar = oSBOApplication.StatusBar.CreateProgressBar("Replace Work Order", oMtx.RowCount, true);
+                        oProgressBar.Text = "Replace Work Order...";
+
+                        try
                         {
-                            string check = string.Empty;
-                            if (oMtx.Columns.Item("cCheck").Cells.Item(i).Specific.Checked == true)
-                                check = "Y";
-
-                            if (check == "Y")
+                            for (int i = 1; i <= oMtx.RowCount; i++)
                             {
-                                string query = "SELECT \"DocEntry\" FROM OWOR WHERE \"DocNum\" = '" + oMtx.Columns.Item("cNoWo").Cells.Item(i).Specific.Value + "'";
-                                oRec.DoQuery(query);
+                                string check = string.Empty;
+                                if (oMtx.Columns.Item("cCheck").Cells.Item(i).Specific.Checked == true)
+                                    check = "Y";
 
-                                int docEntry = 0;
-                                if (oRec.RecordCount > 0)
+                                if (check == "Y")
                                 {
-                                    docEntry = oRec.Fields.Item("DocEntry").Value;
-                                }
+                                    string query = "SELECT \"DocEntry\" FROM OWOR WHERE \"DocNum\" = '" + oMtx.Columns.Item("cNoWo").Cells.Item(i).Specific.Value + "'";
+                                    oRec.DoQuery(query);
 
-                                oProd.GetByKey(docEntry);
-
-                                for (int j = 0; j < oProd.Lines.Count; j++)
-                                {
-                                    if (oProd.Lines.ItemNo == oForm.Items.Item("tComItmCd").Specific.Value)
+                                    int docEntry = 0;
+                                    if (oRec.RecordCount > 0)
                                     {
-                                        oProd.Lines.SetCurrentLine(j);
-                                        oProd.Lines.ItemNo = oForm.Items.Item("tAltItmCd").Specific.Value;
-                                        oProd.Lines.PlannedQuantity = Utils.SBOToWindowsNumberWithoutCurrency(oMtx.Columns.Item("cAltQty").Cells.Item(i).Specific.Value);
+                                        docEntry = oRec.Fields.Item("DocEntry").Value;
+                                    }
 
-                                        int retCode = oProd.Update();
-                                        if (retCode == 0)
+                                    oProd.GetByKey(docEntry);
+
+                                    for (int j = 0; j < oProd.Lines.Count; j++)
+                                    {
+                                        string b = oForm.Items.Item("tComItmCd").Specific.Value;
+                                        if (oProd.Lines.ItemNo == b)
                                         {
-                                            compLog.SetProperty("Code", GetLogCode());
-                                            compLog.SetProperty("U_SOL_DOCNUM", oMtx.Columns.Item("cNoWo").Cells.Item(i).Specific.Value);
-                                            compLog.SetProperty("U_SOL_RPLDATE", DateTime.Now.Date);
-                                            compLog.SetProperty("U_SOL_ITEMCODE", oForm.Items.Item("tComItmCd").Specific.Value);
-                                            compLog.SetProperty("U_SOL_ITEMNAME", oForm.Items.Item("tComItmNm").Specific.Value);
-                                            compLog.SetProperty("U_SOL_ITMCODE", oForm.Items.Item("tAltItmCd").Specific.Value);
-                                            compLog.SetProperty("U_SOL_ITMNAME", oForm.Items.Item("tAltItmNm").Specific.Value);
-                                            compLog.SetProperty("U_SOL_COMPQTY", oMtx.Columns.Item("cComQty").Cells.Item(i).Specific.Value);
-                                            compLog.SetProperty("U_SOL_ALTQTY", oMtx.Columns.Item("cAltQty").Cells.Item(i).Specific.Value);
+                                            double a = Utils.SBOToWindowsNumberWithoutCurrency(oMtx.Columns.Item("cAltQty").Cells.Item(i).Specific.Value);
+                                            oProd.Lines.SetCurrentLine(j);
+                                            oProd.Lines.ItemNo = oForm.Items.Item("tAltItmCd").Specific.Value;
+                                            oProd.Lines.PlannedQuantity = a;
 
-                                            oGenService.Add(compLog);
-                                            if (oSBOCompany.InTransaction)
+                                            int retCode = oProd.Update();
+                                            if (retCode == 0)
                                             {
-                                                oSBOCompany.EndTransaction(SAPbobsCOM.BoWfTransOpt.wf_Commit);
+                                                compLog.SetProperty("Code", GetLogCode());
+                                                compLog.SetProperty("U_SOL_DOCNUM", oMtx.Columns.Item("cNoWo").Cells.Item(i).Specific.Value);
+                                                compLog.SetProperty("U_SOL_RPLDATE", DateTime.Now.Date);
+                                                compLog.SetProperty("U_SOL_ITEMCODE", oForm.Items.Item("tComItmCd").Specific.Value);
+                                                compLog.SetProperty("U_SOL_ITEMNAME", oForm.Items.Item("tComItmNm").Specific.Value);
+                                                compLog.SetProperty("U_SOL_ITMCODE", oForm.Items.Item("tAltItmCd").Specific.Value);
+                                                compLog.SetProperty("U_SOL_ITMNAME", oForm.Items.Item("tAltItmNm").Specific.Value);
+                                                compLog.SetProperty("U_SOL_COMPQTY", oMtx.Columns.Item("cComQty").Cells.Item(i).Specific.Value);
+                                                compLog.SetProperty("U_SOL_ALTQTY", oMtx.Columns.Item("cAltQty").Cells.Item(i).Specific.Value);
+
+                                                oGenService.Add(compLog);
+                                                if (oSBOCompany.InTransaction)
+                                                {
+                                                    oSBOCompany.EndTransaction(SAPbobsCOM.BoWfTransOpt.wf_Commit);
+                                                }
+                                            }
+                                            else
+                                            {
+                                                throw new Exception();
                                             }
                                         }
                                         else
                                         {
-                                            throw new Exception();
+                                            oProd.Lines.SetCurrentLine(j + 1);
                                         }
                                     }
                                 }
                             }
+                            oSBOApplication.StatusBar.SetText("Success change component item.", SAPbouiCOM.BoMessageTime.bmt_Short, SAPbouiCOM.BoStatusBarMessageType.smt_Success);
                         }
-                    }
-                    catch (Exception ex)
-                    {
-                        oSBOApplication.MessageBox(ex.Message);
-                    }
-                    finally
-                    {
-                        oProgressBar.Stop();
-                        if (oForm != null) oForm.Freeze(false);
+                        catch (Exception ex)
+                        {
+                            oSBOApplication.MessageBox(ex.Message);
+                        }
+                        finally
+                        {
+                            oProgressBar.Stop();
+                            if (oForm != null) oForm.Freeze(false);
+                        }
                     }
                 }
             }
@@ -391,13 +416,103 @@ namespace Subtitution.Processor
             query = "CALL SOL_SP_COMPITEM_LOG_CODE";
 
             oRec.DoQuery(query);
-            if(oRec.RecordCount > 0)
+            if (oRec.RecordCount > 0)
             {
                 code = oRec.Fields.Item("RunNumber").Value;
             }
 
             Utils.releaseObject(oRec);
             return code;
+        }
+        #endregion
+
+        #region Validation
+        /// <summary>
+        /// Validasi button find
+        /// </summary>
+        private bool IsBlockFind(string formUID, out string errorMsg)
+        {
+            bool blocked = false;
+            Form oForm = oSBOApplication.Forms.Item(formUID);
+            Recordset oRec = oSBOCompany.GetBusinessObject(BoObjectTypes.BoRecordset);
+            DateTime startDate = DateTime.Now;
+            DateTime endDate = DateTime.Now;
+
+            if (oForm.Items.Item("tStrDt").Specific.Value != "" && oForm.Items.Item("tEndDt").Specific.Value != "")
+            {
+                startDate = DateTime.ParseExact(oForm.Items.Item("tStrDt").Specific.Value, "yyyyMMdd", null);
+                endDate = DateTime.ParseExact(oForm.Items.Item("tEndDt").Specific.Value, "yyyyMMdd", null);
+            }
+
+
+            if (oForm.Items.Item("tStrDt").Specific.Value == "")
+            {
+                errorMsg = "Start Date harus diisi.";
+                blocked = true;
+            }
+            else if (oForm.Items.Item("tEndDt").Specific.Value == "")
+            {
+                errorMsg = "End Date harus diisi.";
+                blocked = true;
+            }
+            else if (startDate > endDate)
+            {
+                errorMsg = "Start Date harus lebih kecil dan End Date harus lebih besar.";
+                blocked = true;
+            }
+            else if (oForm.Items.Item("tComItmCd").Specific.Value == "")
+            {
+                errorMsg = "Component Item Code harus diisi.";
+                blocked = true;
+            }
+            else if (oForm.Items.Item("tAltItmCd").Specific.Value == "")
+            {
+                errorMsg = "Alternative Item Code harus diisi.";
+                blocked = true;
+            }
+            else
+            {
+                oRec.DoQuery(
+                                "SELECT 1 FROM OWOR "
+                                + "INNER JOIN WOR1 ON OWOR.\"DocEntry\" = WOR1.\"DocEntry\" "
+                                + "WHERE WOR1.\"ItemCode\" = '" + oForm.Items.Item("tComItmCd").Specific.Value + "'"
+                            );
+
+                if (oRec.RecordCount <= 0)
+                    blocked = true;
+
+                errorMsg = "Tidak ada Production Order yang mengandung barang komponen tersebut.";
+            }
+
+            Utils.releaseObject(oRec);
+            return blocked;
+        }
+
+        /// <summary>
+        /// Validasi button replace
+        /// </summary>
+        private bool IsBlocReplace(string formUID, out string errorMsg)
+        {
+            bool blocked = false;
+            errorMsg = string.Empty;
+            string check = "N";
+
+            Form oForm = oSBOApplication.Forms.Item(formUID);
+            Matrix oMtx = oForm.Items.Item("mt_1").Specific;
+
+            for (int i = 1; i <= oMtx.RowCount; i++)
+            {
+                if (oMtx.Columns.Item("cCheck").Cells.Item(i).Specific.Checked == true) { check = "Y"; }
+            }
+
+            if (check == "N")
+            {
+                blocked = true;
+                errorMsg = "Pilih minimal 1 Production Order yang ingin diganti.";
+            }
+
+            Utils.releaseObject(oForm); Utils.releaseObject(oMtx);
+            return blocked;
         }
         #endregion
     }
