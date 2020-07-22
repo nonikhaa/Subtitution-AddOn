@@ -13,6 +13,7 @@ namespace Subtitution.Processor
     {
         private SAPbouiCOM.Application oSBOApplication;
         private SAPbobsCOM.Company oSBOCompany;
+        private ProgressBar oProgressBar;
 
         /// <summary>
         /// Constructor
@@ -70,16 +71,16 @@ namespace Subtitution.Processor
                 dtSource = oForm.DataSources.DBDataSources.Item("@SOL_UPBOMVER_H");
                 oForm.Freeze(true);
 
-                int runCode = GenerateCode();
-                string updDate = DateTime.Now.Date.ToShortDateString();
+                //string runCode = GenerateCode();
+                DateTime updDate = DateTime.Now.Date;
                 string updTime = DateTime.Now.TimeOfDay.ToString();
                 GetLastUpdate(out updDate, out updTime);
 
                 oForm.Items.Item("tUpDt").Enabled = true;
                 oForm.Items.Item("tUpTm").Enabled = true;
 
-                dtSource.SetValue("Code", 0, runCode.ToString());
-                dtSource.SetValue("U_SOL_UPDATE", 0, updDate);
+                //dtSource.SetValue("Code", 0, runCode);
+                dtSource.SetValue("U_SOL_UPDATE", 0, updDate.ToString("yyyyMMdd", CultureInfo.InvariantCulture));
                 dtSource.SetValue("U_SOL_UPTIME", 0, updTime);
 
                 //oForm.Items.Item("tUpDt").Enabled = false;
@@ -117,6 +118,9 @@ namespace Subtitution.Processor
             }
         }
 
+        /// <summary>
+        /// Update bom masal
+        /// </summary>
         private void UpdateBomVer_Update(string formUID, ref ItemEvent pVal, ref bool bubbleEvent)
         {
             if (bubbleEvent)
@@ -125,10 +129,17 @@ namespace Subtitution.Processor
                 {
                     SAPbobsCOM.GeneralService oGeneralService;
                     SAPbobsCOM.GeneralData oGeneralData;
-                    SAPbobsCOM.GeneralDataCollection oSons;
-                    SAPbobsCOM.GeneralData oSon;
                     SAPbobsCOM.CompanyService sCmp;
+                    SAPbobsCOM.ProductTrees oBom = (SAPbobsCOM.ProductTrees)oSBOCompany.GetBusinessObject(SAPbobsCOM.BoObjectTypes.oProductTrees);
                     sCmp = oSBOCompany.GetCompanyService();
+
+                    SAPbobsCOM.GeneralData oGenDataUpdtBom;
+                    SAPbobsCOM.GeneralService oGenServiceUpdtBom;
+
+                    Form oForm = oSBOApplication.Forms.Item(formUID);
+                    DBDataSource dtSource = null;
+                    dtSource = oForm.DataSources.DBDataSources.Item("@SOL_UPBOMVER_H");
+                    string postingDt = dtSource.GetValue("U_SOL_UPDATE", 0);
 
                     // Get a handle to the UDO
                     oGeneralService = sCmp.GetGeneralService("BOMVER");
@@ -136,69 +147,98 @@ namespace Subtitution.Processor
                     Recordset oRecBomSap = oSBOCompany.GetBusinessObject(BoObjectTypes.BoRecordset);
                     Recordset oRecBomVer = oSBOCompany.GetBusinessObject(BoObjectTypes.BoRecordset);
 
+                    oForm.Freeze(true);
+
                     try
                     {
                         string query = string.Empty;
                         if (oSBOCompany.DbServerType == BoDataServerTypes.dst_HANADB)
                         {
-                            query = "CALL SOL_SP_UPDTBOM_GETDIFFBOM()";
+                            query = "CALL SOL_SP_UPDTBOM_GETDIFFBOM('" + postingDt + "')";
                         }
-
                         oRecBomSap.DoQuery(query);
+
                         if (oRecBomSap.RecordCount > 0)
                         {
+                            int progress = 0;
+                            oProgressBar = oSBOApplication.StatusBar.CreateProgressBar("Update BOM", oRecBomSap.RecordCount, true);
+                            oProgressBar.Text = "Update BOM...";
+
                             for (int i = 1; i <= oRecBomSap.RecordCount; i++)
                             {
-                                string test = oRecBomSap.Fields.Item("CodeFgSap").Value;
                                 // Get BOM SAP and insert to BOM Version
+                                string itemCodeFG = oRecBomSap.Fields.Item("Code").Value;
+                                string version = oRecBomSap.Fields.Item("Version").Value;
+
                                 if (oSBOCompany.DbServerType == BoDataServerTypes.dst_HANADB)
                                 {
-                                    query = "CALL SOL_SP_UPDTBOM_GETBOM('" + oRecBomSap.Fields.Item("CodeFgSap").Value + "')";
+                                    query = "CALL SOL_SP_UPDTBOM_GETBOM('" + itemCodeFG + "')";
                                 }
                                 oRecBomVer.DoQuery(query);
+
                                 if (oRecBomVer.RecordCount > 0)
                                 {
-                                    // Specify data for main UDO
                                     oGeneralData = oGeneralService.GetDataInterface(SAPbobsCOM.GeneralServiceDataInterfaces.gsGeneralData);
-                                    oGeneralData.SetProperty("U_SOL_ITEMCODE", oRecBomVer.Fields.Item("ItemCode").Value);
-                                    oGeneralData.SetProperty("U_SOL_ITEMNAME", oRecBomVer.Fields.Item("ItemName").Value);
-                                    oGeneralData.SetProperty("U_SOL_ITMGRPCOD", oRecBomVer.Fields.Item("ItmsGrpCod").Value);
-                                    oGeneralData.SetProperty("U_SOL_ITEMGROUP", oRecBomVer.Fields.Item("ItmsGrpNam").Value);
-                                    oGeneralData.SetProperty("U_SOL_BOMTYPE", oRecBomVer.Fields.Item("BomType").Value);
-                                    oGeneralData.SetProperty("U_SOL_VERSION", GenerateBomVersion(oRecBomVer.Fields.Item("ItemCode").Value));
-                                    oGeneralData.SetProperty("U_SOL_PLANQTY", oRecBomVer.Fields.Item("PlanQty").Value);
-                                    oGeneralData.SetProperty("U_SOL_POSTDATE", DateTime.Now.ToString("yyyyMMdd", CultureInfo.InvariantCulture));
-                                    oGeneralData.SetProperty("U_SOL_STATUS", "A");
-                                    oGeneralData.SetProperty("U_SOL_WHSCODE", oRecBomVer.Fields.Item("ToWH").Value);
-                                    oGeneralData.SetProperty("U_SOL_REMARK", "Created by Add-On Update Bom Version");
-
-
-                                    oSons = oGeneralData.Child("SOL_BOMVER_D");
-                                    while (!oRecBomVer.EoF)
+                                    if (!string.IsNullOrEmpty(version)) // jika bom sudah ada di bom version
                                     {
-                                        oSon = oSons.Add();
-                                        oSon.SetProperty("U_SOL_TYPE", oRecBomVer.Fields.Item("Type").Value);
-                                        oSon.SetProperty("U_SOL_ITEMCODE", oRecBomVer.Fields.Item("ItemCodeComp").Value);
-                                        oSon.SetProperty("U_SOL_ITEMNAME", GetItemName(oRecBomVer.Fields.Item("ItemCodeComp").Value));
-                                        oSon.SetProperty("U_SOL_QTY", oRecBomVer.Fields.Item("Quantity").Value);
-                                        oSon.SetProperty("U_SOL_WHSCODE", oRecBomVer.Fields.Item("Warehouse").Value);
-                                        oSon.SetProperty("U_SOL_UOM", oRecBomVer.Fields.Item("Uom").Value);
-                                        oSon.SetProperty("U_SOL_METHOD", oRecBomVer.Fields.Item("IssueMthd").Value);
+                                        // non aktivin bom version
+                                        InactiveBomVer(itemCodeFG);
 
-                                        oRecBomVer.MoveNext();
+                                        // update aktivin bom version sesuai versinya
+                                        ActivateBomVer(version);
+
+                                        // update versi di bom sap
+                                        UpdateBOM(itemCodeFG, version, ref bubbleEvent);
+                                        
                                     }
-                                    oGeneralService.Add(oGeneralData);
+                                    else // jika bom belum ada di bom version
+                                    {
+                                        // non aktivin bom version
+                                        InactiveBomVer(itemCodeFG);
+
+                                        // add bom version
+                                        AddBomVer(ref oRecBomVer, ref oGeneralService, ref bubbleEvent);
+
+                                        // update versi di bom sap
+                                        UpdateBOM(itemCodeFG, version, ref bubbleEvent);
+                                    }
                                 }
+                                progress += 1;
+                                oProgressBar.Value = progress;
+
                                 oRecBomSap.MoveNext();
                             }
+
+                            // Save ke log update bom version
+                            #region Save ke log update bom version
+                            oGenServiceUpdtBom = sCmp.GetGeneralService("UPBOMVER");
+                            oGenDataUpdtBom = oGenServiceUpdtBom.GetDataInterface(SAPbobsCOM.GeneralServiceDataInterfaces.gsGeneralData);
+                            oGenDataUpdtBom.SetProperty("Code", GenerateCode());
+                            oGenDataUpdtBom.SetProperty("U_SOL_UPDATE", DateTime.Now.Date.ToShortDateString());
+                            oGenDataUpdtBom.SetProperty("U_SOL_UPTIME", DateTime.Now.ToString("HH:mm:ss", CultureInfo.InvariantCulture));
+
+                            oGenServiceUpdtBom.Add(oGenDataUpdtBom);
+                            #endregion
+
+                            oProgressBar.Stop();
+                            TemplateLoad(ref oForm);
+                            oSBOApplication.StatusBar.SetText("Update BOM Success", SAPbouiCOM.BoMessageTime.bmt_Short, SAPbouiCOM.BoStatusBarMessageType.smt_Success);
+                        }
+                        else
+                        {
+                            oSBOApplication.MessageBox("Tidak ada data yang dapat di update.");
                         }
                     }
                     catch (Exception ex)
                     {
+                        bubbleEvent = false;
                         oSBOApplication.MessageBox(ex.Message);
                     }
                     finally
                     {
+                        oProgressBar.Stop();
+                        if (oForm != null) oForm.Freeze(false);
+
                         Utils.releaseObject(oRecBomSap);
                         Utils.releaseObject(oRecBomVer);
                         Utils.releaseObject(oGeneralService);
@@ -208,11 +248,168 @@ namespace Subtitution.Processor
         }
 
         /// <summary>
+        /// Inactive bom version
+        /// </summary>
+        private void InactiveBomVer(string itemCodeFG)
+        {
+            SAPbobsCOM.GeneralService oGeneralService;
+            SAPbobsCOM.GeneralData oGeneralData;
+            SAPbobsCOM.GeneralDataParams oGeneralParams;
+            SAPbobsCOM.CompanyService sCmp;
+            Recordset oRecBomVer1 = oSBOCompany.GetBusinessObject(BoObjectTypes.BoRecordset);
+
+            sCmp = oSBOCompany.GetCompanyService();
+            oGeneralService = sCmp.GetGeneralService("BOMVER");
+
+            oRecBomVer1.DoQuery("CALL SOL_SP_UPDTBOM_GETACTIVEBOM('" + itemCodeFG + "')");
+            if (oRecBomVer1.RecordCount > 0)
+            {
+                while (!oRecBomVer1.EoF)
+                {
+                    oGeneralParams = (GeneralDataParams)oGeneralService.GetDataInterface(GeneralServiceDataInterfaces.gsGeneralDataParams);
+                    var a = oRecBomVer1.Fields.Item("DocEntry").Value;
+                    oGeneralParams.SetProperty("DocEntry", a);
+
+                    oGeneralData = oGeneralService.GetByParams(oGeneralParams);
+
+                    oGeneralData.SetProperty("U_SOL_STATUS", "I");
+                    oGeneralService.Update(oGeneralData);
+
+                    oRecBomVer1.MoveNext();
+                }
+            }
+        }
+
+        /// <summary>
+        /// Activate bom version
+        /// </summary>
+        private void ActivateBomVer(string version)
+        {
+            SAPbobsCOM.GeneralService oGeneralService;
+            SAPbobsCOM.GeneralData oGeneralData;
+            SAPbobsCOM.GeneralDataParams oGeneralParams;
+            SAPbobsCOM.CompanyService sCmp;
+            Recordset oRec = oSBOCompany.GetBusinessObject(BoObjectTypes.BoRecordset);
+
+            sCmp = oSBOCompany.GetCompanyService();
+            oGeneralService = sCmp.GetGeneralService("BOMVER");
+
+            oRec.DoQuery("SELECT \"DocEntry\" FROM \"@SOL_BOMVER_H\" WHERE \"U_SOL_VERSION\" = '" + version + "'");
+            if (oRec.RecordCount > 0)
+            {
+                while (!oRec.EoF)
+                {
+                    oGeneralParams = oGeneralService.GetDataInterface(GeneralServiceDataInterfaces.gsGeneralDataParams);
+                    var a = oRec.Fields.Item("DocEntry").Value;
+                    oGeneralParams.SetProperty("DocEntry", a);
+
+                    oGeneralData = oGeneralService.GetByParams(oGeneralParams);
+
+                    oGeneralData.SetProperty("U_SOL_STATUS", "A");
+                    oGeneralService.Update(oGeneralData);
+
+                    oRec.MoveNext();
+                }
+            }
+        }
+
+        /// <summary>
+        /// Add new bom version
+        /// </summary>
+        private void AddBomVer(ref Recordset oRecBomVer, ref GeneralService oGeneralService, ref bool bubbleEvent)
+        {
+            SAPbobsCOM.GeneralData oGeneralData;
+            SAPbobsCOM.CompanyService sCmp;
+            SAPbobsCOM.GeneralDataCollection oSons;
+            SAPbobsCOM.GeneralData oSon;
+
+            sCmp = oSBOCompany.GetCompanyService();
+            oGeneralService = sCmp.GetGeneralService("BOMVER");
+            oGeneralData = oGeneralService.GetDataInterface(SAPbobsCOM.GeneralServiceDataInterfaces.gsGeneralData);
+            oSons = oGeneralData.Child("SOL_BOMVER_D");
+
+            try
+            {
+                // Specify data for main UDO
+                string versionCode = GenerateBomVersion(oRecBomVer.Fields.Item("ItemCode").Value);
+                oGeneralData.SetProperty("U_SOL_ITEMCODE", oRecBomVer.Fields.Item("ItemCode").Value);
+                oGeneralData.SetProperty("U_SOL_ITEMNAME", oRecBomVer.Fields.Item("ItemName").Value);
+                oGeneralData.SetProperty("U_SOL_ITMGRPCOD", oRecBomVer.Fields.Item("ItmsGrpCod").Value);
+                oGeneralData.SetProperty("U_SOL_ITEMGROUP", oRecBomVer.Fields.Item("ItmsGrpNam").Value);
+                oGeneralData.SetProperty("U_SOL_BOMTYPE", oRecBomVer.Fields.Item("BomType").Value);
+                oGeneralData.SetProperty("U_SOL_VERSION", versionCode);
+                oGeneralData.SetProperty("U_SOL_PLANQTY", oRecBomVer.Fields.Item("PlanQty").Value);
+                oGeneralData.SetProperty("U_SOL_POSTDATE", DateTime.Now.ToString("yyyyMMdd", CultureInfo.InvariantCulture));
+                oGeneralData.SetProperty("U_SOL_STATUS", "A");
+                oGeneralData.SetProperty("U_SOL_WHSCODE", oRecBomVer.Fields.Item("ToWH").Value);
+                oGeneralData.SetProperty("U_SOL_REMARK", "Created by Add-On Update Bom Version");
+
+                while (!oRecBomVer.EoF)
+                {
+                    oSon = oSons.Add();
+                    oSon.SetProperty("U_SOL_TYPE", oRecBomVer.Fields.Item("Type").Value);
+                    oSon.SetProperty("U_SOL_ITEMCODE", oRecBomVer.Fields.Item("ItemCodeComp").Value);
+                    oSon.SetProperty("U_SOL_ITEMNAME", GetItemName(oRecBomVer.Fields.Item("ItemCodeComp").Value));
+                    oSon.SetProperty("U_SOL_QTY", oRecBomVer.Fields.Item("Quantity").Value);
+                    oSon.SetProperty("U_SOL_WHSCODE", oRecBomVer.Fields.Item("Warehouse").Value);
+                    oSon.SetProperty("U_SOL_UOM", oRecBomVer.Fields.Item("Uom").Value);
+                    oSon.SetProperty("U_SOL_METHOD", oRecBomVer.Fields.Item("IssueMthd").Value);
+
+                    oRecBomVer.MoveNext();
+                }
+                oGeneralService.Add(oGeneralData);
+
+            }
+            catch (Exception ex)
+            {
+                bubbleEvent = false;
+                oSBOApplication.MessageBox(ex.Message);
+            }
+            finally
+            {
+                Utils.releaseObject(oGeneralData);
+                Utils.releaseObject(sCmp);
+                Utils.releaseObject(oSons);
+            }
+        }
+
+        /// <summary>
+        /// Update production order
+        /// </summary>
+        private void UpdateBOM(string itemCodeFg, string version, ref bool bubbleEvent)
+        {
+            SAPbobsCOM.ProductTrees oBom = (SAPbobsCOM.ProductTrees)oSBOCompany.GetBusinessObject(SAPbobsCOM.BoObjectTypes.oProductTrees);
+
+            try
+            {
+                oBom.GetByKey(itemCodeFg);
+                oBom.UserFields.Fields.Item("U_SOL_BOMVERNO").Value = version;
+
+                if (oBom.Update() != 0)
+                {
+                    int ErrCod = oSBOCompany.GetLastErrorCode();
+                    string ErrMsg = oSBOCompany.GetLastErrorDescription();
+
+                    oSBOApplication.MessageBox(ErrCod.ToString() + " : " + ErrMsg);
+                }
+            }
+            catch (Exception ex)
+            {
+                bubbleEvent = false;
+                oSBOApplication.MessageBox(ex.Message);
+            }
+            finally
+            {
+                Utils.releaseObject(oBom);
+            }
+        }
+
+        /// <summary>
         /// Get last update data
         /// </summary>
-        private void GetLastUpdate(out string updateDate, out string updateTime)
+        private void GetLastUpdate(out DateTime updateDate, out string updateTime)
         {
-            updateDate = DateTime.Now.ToString("yyyyMMdd", CultureInfo.InvariantCulture);
+            updateDate = DateTime.Now.Date;
             updateTime = DateTime.Now.ToString("HH:mm:ss", CultureInfo.InvariantCulture);
 
             Recordset oRec = oSBOCompany.GetBusinessObject(BoObjectTypes.BoRecordset);
@@ -232,9 +429,9 @@ namespace Subtitution.Processor
         /// <summary>
         /// Generate code number
         /// </summary>
-        private int GenerateCode()
+        private string GenerateCode()
         {
-            int code = 0;
+            string code = "0";
 
             Recordset oRec = oSBOCompany.GetBusinessObject(BoObjectTypes.BoRecordset);
             string query = "CALL SOL_SP_UPDTBOM_CODE";
@@ -242,7 +439,7 @@ namespace Subtitution.Processor
 
             if (oRec.RecordCount > 0)
             {
-                code = oRec.Fields.Item("RunNumber").Value;
+                code = Convert.ToString(oRec.Fields.Item("RunNumber").Value);
             }
 
             Utils.releaseObject(oRec);
