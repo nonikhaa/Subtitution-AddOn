@@ -139,7 +139,8 @@ namespace Subtitution.Processor
                     Form oForm = oSBOApplication.Forms.Item(formUID);
                     DBDataSource dtSource = null;
                     dtSource = oForm.DataSources.DBDataSources.Item("@SOL_UPBOMVER_H");
-                    string postingDt = dtSource.GetValue("U_SOL_UPDATE", 0);
+                    string lastDate = dtSource.GetValue("U_SOL_UPDATE", 0);
+                    string lastTime = dtSource.GetValue("U_SOL_UPTIME", 0);
 
                     // Get a handle to the UDO
                     oGeneralService = sCmp.GetGeneralService("BOMVER");
@@ -154,7 +155,7 @@ namespace Subtitution.Processor
                         string query = string.Empty;
                         if (oSBOCompany.DbServerType == BoDataServerTypes.dst_HANADB)
                         {
-                            query = "CALL SOL_SP_UPDTBOM_GETDIFFBOM('" + postingDt + "')";
+                            query = "CALL SOL_SP_UPDTBOM_GETDIFFBOM('" + lastDate + "')";
                         }
                         oRecBomSap.DoQuery(query);
 
@@ -197,10 +198,11 @@ namespace Subtitution.Processor
                                         InactiveBomVer(itemCodeFG);
 
                                         // add bom version
-                                        AddBomVer(ref oRecBomVer, ref oGeneralService, ref bubbleEvent);
+                                        string versionCode = string.Empty;
+                                        AddBomVer(ref oRecBomVer, ref oGeneralService, ref bubbleEvent, out versionCode);
 
                                         // update versi di bom sap
-                                        UpdateBOM(itemCodeFG, version, ref bubbleEvent);
+                                        UpdateBOM(itemCodeFG, versionCode, ref bubbleEvent);
                                     }
                                 }
                                 progress += 1;
@@ -236,7 +238,9 @@ namespace Subtitution.Processor
                     }
                     finally
                     {
-                        oProgressBar.Stop();
+                        if(oProgressBar != null)
+                            oProgressBar.Stop();
+
                         if (oForm != null) oForm.Freeze(false);
 
                         Utils.releaseObject(oRecBomSap);
@@ -316,7 +320,7 @@ namespace Subtitution.Processor
         /// <summary>
         /// Add new bom version
         /// </summary>
-        private void AddBomVer(ref Recordset oRecBomVer, ref GeneralService oGeneralService, ref bool bubbleEvent)
+        private void AddBomVer(ref Recordset oRecBomVer, ref GeneralService oGeneralService, ref bool bubbleEvent, out string versionCode)
         {
             SAPbobsCOM.GeneralData oGeneralData;
             SAPbobsCOM.CompanyService sCmp;
@@ -328,10 +332,12 @@ namespace Subtitution.Processor
             oGeneralData = oGeneralService.GetDataInterface(SAPbobsCOM.GeneralServiceDataInterfaces.gsGeneralData);
             oSons = oGeneralData.Child("SOL_BOMVER_D");
 
+            versionCode = string.Empty;
+
             try
             {
                 // Specify data for main UDO
-                string versionCode = GenerateBomVersion(oRecBomVer.Fields.Item("ItemCode").Value);
+                versionCode = GenerateBomVersion(oRecBomVer.Fields.Item("ItemCode").Value);
                 oGeneralData.SetProperty("U_SOL_ITEMCODE", oRecBomVer.Fields.Item("ItemCode").Value);
                 oGeneralData.SetProperty("U_SOL_ITEMNAME", oRecBomVer.Fields.Item("ItemName").Value);
                 oGeneralData.SetProperty("U_SOL_ITMGRPCOD", oRecBomVer.Fields.Item("ItmsGrpCod").Value);
@@ -339,7 +345,7 @@ namespace Subtitution.Processor
                 oGeneralData.SetProperty("U_SOL_BOMTYPE", oRecBomVer.Fields.Item("BomType").Value);
                 oGeneralData.SetProperty("U_SOL_VERSION", versionCode);
                 oGeneralData.SetProperty("U_SOL_PLANQTY", oRecBomVer.Fields.Item("PlanQty").Value);
-                oGeneralData.SetProperty("U_SOL_POSTDATE", DateTime.Now.ToString("yyyyMMdd", CultureInfo.InvariantCulture));
+                oGeneralData.SetProperty("U_SOL_POSTDATE", DateTime.Now.Date);
                 oGeneralData.SetProperty("U_SOL_STATUS", "A");
                 oGeneralData.SetProperty("U_SOL_WHSCODE", oRecBomVer.Fields.Item("ToWH").Value);
                 oGeneralData.SetProperty("U_SOL_REMARK", "Created by Add-On Update Bom Version");
@@ -409,13 +415,17 @@ namespace Subtitution.Processor
         /// </summary>
         private void GetLastUpdate(out DateTime updateDate, out string updateTime)
         {
-            updateDate = DateTime.Now.Date;
+            updateDate = DateTime.ParseExact("20000110", "yyyyMMdd", CultureInfo.InvariantCulture);
             updateTime = DateTime.Now.ToString("HH:mm:ss", CultureInfo.InvariantCulture);
 
             Recordset oRec = oSBOCompany.GetBusinessObject(BoObjectTypes.BoRecordset);
-            string query = "SELECT MAX(\"Code\"), \"U_SOL_UPDATE\", \"U_SOL_UPTIME\" "
-                            + "FROM \"@SOL_UPBOMVER_H\" "
-                            + "GROUP BY \"Code\", \"U_SOL_UPDATE\", \"U_SOL_UPTIME\" ";
+            //string query = "SELECT MAX(\"Code\"), \"U_SOL_UPDATE\", \"U_SOL_UPTIME\" "
+            //                + "FROM \"@SOL_UPBOMVER_H\" "
+            //                + "GROUP BY \"Code\", \"U_SOL_UPDATE\", \"U_SOL_UPTIME\" ";
+
+            string query = "SELECT MAX(\"Code\"), MAX(\"U_SOL_UPDATE\") AS \"U_SOL_UPDATE\",  MAX(TO_CHAR(TO_TIME(\"U_SOL_UPTIME\", 'HH:MI:SS'), 'HH24:MI:SS')) AS \"U_SOL_UPTIME\" "
+                           + " FROM \"@SOL_UPBOMVER_H\" ";
+
             oRec.DoQuery(query);
             if (oRec.RecordCount > 0)
             {
