@@ -12,6 +12,7 @@ namespace Subtitution.Processor
     {
         private SAPbouiCOM.Application oSBOApplication;
         private SAPbobsCOM.Company oSBOCompany;
+        private ProgressBar oProgressBar;
 
         /// <summary>
         /// Constructor
@@ -81,6 +82,35 @@ namespace Subtitution.Processor
             }
         }
 
+        /// <summary>
+        /// Clear row matrix
+        /// </summary>
+        private void ClearMatrix(string formUID)
+        {
+            Form oForm = oSBOApplication.Forms.Item(formUID);
+            Matrix oMtx = oForm.Items.Item("mt_1").Specific;
+
+            try
+            {
+                if (oMtx.RowCount > 0)
+                {
+                    for (int i = 1; i < oMtx.RowCount; i++)
+                    {
+                        oMtx.DeleteRow(i);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                oSBOApplication.MessageBox(ex.Message);
+            }
+            finally
+            {
+                Utils.releaseObject(oForm);
+                Utils.releaseObject(oMtx);
+            }
+        }
+
         #region Item Event
         /// <summary>
         /// Item Event change component item
@@ -91,7 +121,7 @@ namespace Subtitution.Processor
             {
                 case BoEventTypes.et_VALIDATE: Validate_CompItem(formUID, ref pVal, ref bubbleEvent); break;
                 case BoEventTypes.et_CLICK: ItemEvent_ChangeCompItm_Click(formUID, ref pVal, ref bubbleEvent); break;
-                    //case BoEventTypes.et_DOUBLE_CLICK: ChangeComp_SelectAll(formUID, ref pVal, ref bubbleEvent); break;
+                case BoEventTypes.et_DOUBLE_CLICK: ChangeComp_SelectAll(formUID, ref pVal, ref bubbleEvent); break;
             }
         }
 
@@ -230,8 +260,7 @@ namespace Subtitution.Processor
                         string startDate = oForm.Items.Item("tStrDt").Specific.Value;
                         string endDate = oForm.Items.Item("tEndDt").Specific.Value;
 
-                        ProgressBar oProgressBar = oSBOApplication.StatusBar.CreateProgressBar("Find Work Order", oMtx.RowCount, true);
-                        oProgressBar.Text = "Find Work Order...";
+                        int progress = 0;
 
                         try
                         {
@@ -245,6 +274,10 @@ namespace Subtitution.Processor
 
                             if (oRec.RecordCount > 0)
                             {
+                                oProgressBar = oSBOApplication.StatusBar.CreateProgressBar("Find Work Order", oRec.RecordCount, true);
+                                oProgressBar.Text = "Find Work Order...";
+
+                                ClearMatrix(formUID);
                                 EnableDisableMatrix(true, ref oMtx);
                                 for (int i = 1; i <= oRec.RecordCount; i++)
                                 {
@@ -257,6 +290,10 @@ namespace Subtitution.Processor
                                     oMtx.Columns.Item("cNoWo").Cells.Item(i).Specific.Value = oRec.Fields.Item("DocNum").Value;
                                     oMtx.Columns.Item("cComQty").Cells.Item(i).Specific.Value = oRec.Fields.Item("PlannedQty").Value;
                                     oMtx.Columns.Item("cAltQty").Cells.Item(i).Specific.Value = oRec.Fields.Item("Alternative Qty").Value;
+
+                                    progress += 1;
+                                    oProgressBar.Value = progress;
+                                    oRec.MoveNext();
                                 }
                                 oForm.Items.Item("tAltItmCd").Click();
                                 EnableDisableMatrix(false, ref oMtx);
@@ -268,7 +305,11 @@ namespace Subtitution.Processor
                         }
                         finally
                         {
-                            oProgressBar.Stop();
+                            if (oProgressBar != null)
+                            {
+                                oProgressBar.Stop();
+                                Utils.releaseObject(oProgressBar);
+                            }
                             if (oForm != null) oForm.Freeze(false);
 
                             Utils.releaseObject(oForm);
@@ -290,7 +331,7 @@ namespace Subtitution.Processor
             oMtx.Columns.Item("cFgCode").Editable = value;
             oMtx.Columns.Item("cFgName").Editable = value;
             oMtx.Columns.Item("cComQty").Editable = value;
-            oMtx.Columns.Item("cAltQty").Editable = value;
+            //oMtx.Columns.Item("cAltQty").Editable = value;
         }
 
         /// <summary>
@@ -304,7 +345,7 @@ namespace Subtitution.Processor
                 {
                     // Checkk Validation
                     string errorMsg = string.Empty;
-                    if(IsBlocReplace(formUID, out errorMsg))
+                    if (IsBlocReplace(formUID, out errorMsg))
                     {
                         oSBOApplication.StatusBar.SetText(errorMsg, SAPbouiCOM.BoMessageTime.bmt_Short, SAPbouiCOM.BoStatusBarMessageType.smt_Error);
                     }
@@ -423,6 +464,33 @@ namespace Subtitution.Processor
 
             Utils.releaseObject(oRec);
             return code;
+        }
+
+        private void ChangeComp_SelectAll(string formUID, ref ItemEvent pVal, ref bool bubbleEvent)
+        {
+            if (bubbleEvent)
+            {
+                Form oForm = oSBOApplication.Forms.Item(formUID);
+                Matrix oMtx = oForm.Items.Item("mt_1").Specific;
+
+                if (pVal.ColUID == "cCheck" && pVal.Row == 0 && pVal.Before_Action == true)
+                {
+                    if (oMtx.Columns.Item("cCheck").Cells.Item(1).Specific.Checked == true)
+                    {
+                        for (int i = 1; i <= oMtx.RowCount; i++)
+                        {
+                            oMtx.Columns.Item("cCheck").Cells.Item(i).Specific.Checked = false;
+                        }
+                    }
+                    else
+                    {
+                        for (int i = 1; i <= oMtx.RowCount; i++)
+                        {
+                            oMtx.Columns.Item("cCheck").Cells.Item(i).Specific.Checked = true;
+                        }
+                    }
+                }
+            }
         }
         #endregion
 

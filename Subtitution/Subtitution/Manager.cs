@@ -301,6 +301,7 @@ namespace Subtitution
                     Utils.CreateSP(ref oSBOCompany, ref oSBOApplication, "HANA - SOL_SP_UPDTBOM_GETBOM.sql", "SOL_SP_UPDTBOM_GETBOM");
                     Utils.CreateSP(ref oSBOCompany, ref oSBOApplication, "HANA - SOL_SP_BOMVER_VERSION_CODE.sql", "SOL_SP_BOMVER_VERSION_CODE");
                     Utils.CreateSP(ref oSBOCompany, ref oSBOApplication, "HANA - SOL_SP_UPDTBOM_GETACTIVEBOM.sql", "SOL_SP_UPDTBOM_GETACTIVEBOM");
+                    Utils.CreateSP(ref oSBOCompany, ref oSBOApplication, "HANA - SOL_SP_UPDTBOM_GETLASTUPDT.sql", "SOL_SP_UPDTBOM_GETLASTUPDT");
                 }
             }
             catch (Exception ex)

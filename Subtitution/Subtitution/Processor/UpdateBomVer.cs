@@ -71,15 +71,10 @@ namespace Subtitution.Processor
                 dtSource = oForm.DataSources.DBDataSources.Item("@SOL_UPBOMVER_H");
                 oForm.Freeze(true);
 
-                //string runCode = GenerateCode();
                 DateTime updDate = DateTime.Now.Date;
                 string updTime = DateTime.Now.TimeOfDay.ToString();
                 GetLastUpdate(out updDate, out updTime);
 
-                oForm.Items.Item("tUpDt").Enabled = true;
-                oForm.Items.Item("tUpTm").Enabled = true;
-
-                //dtSource.SetValue("Code", 0, runCode);
                 dtSource.SetValue("U_SOL_UPDATE", 0, updDate.ToString("yyyyMMdd", CultureInfo.InvariantCulture));
                 dtSource.SetValue("U_SOL_UPTIME", 0, updTime);
 
@@ -239,7 +234,10 @@ namespace Subtitution.Processor
                     finally
                     {
                         if(oProgressBar != null)
+                        {
                             oProgressBar.Stop();
+                            Utils.releaseObject(oProgressBar);
+                        }
 
                         if (oForm != null) oForm.Freeze(false);
 
@@ -419,12 +417,8 @@ namespace Subtitution.Processor
             updateTime = DateTime.Now.ToString("HH:mm:ss", CultureInfo.InvariantCulture);
 
             Recordset oRec = oSBOCompany.GetBusinessObject(BoObjectTypes.BoRecordset);
-            //string query = "SELECT MAX(\"Code\"), \"U_SOL_UPDATE\", \"U_SOL_UPTIME\" "
-            //                + "FROM \"@SOL_UPBOMVER_H\" "
-            //                + "GROUP BY \"Code\", \"U_SOL_UPDATE\", \"U_SOL_UPTIME\" ";
 
-            string query = "SELECT MAX(\"Code\"), MAX(\"U_SOL_UPDATE\") AS \"U_SOL_UPDATE\",  MAX(TO_CHAR(TO_TIME(\"U_SOL_UPTIME\", 'HH:MI:SS'), 'HH24:MI:SS')) AS \"U_SOL_UPTIME\" "
-                           + " FROM \"@SOL_UPBOMVER_H\" ";
+            string query = "CALL SOL_SP_UPDTBOM_GETLASTUPDT()";
 
             oRec.DoQuery(query);
             if (oRec.RecordCount > 0)
