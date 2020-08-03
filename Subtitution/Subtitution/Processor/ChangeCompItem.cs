@@ -122,6 +122,7 @@ namespace Subtitution.Processor
                 case BoEventTypes.et_VALIDATE: Validate_CompItem(formUID, ref pVal, ref bubbleEvent); break;
                 case BoEventTypes.et_CLICK: ItemEvent_ChangeCompItm_Click(formUID, ref pVal, ref bubbleEvent); break;
                 case BoEventTypes.et_DOUBLE_CLICK: ChangeComp_SelectAll(formUID, ref pVal, ref bubbleEvent); break;
+                case BoEventTypes.et_MATRIX_LINK_PRESSED: ChangeComp_LinkPressed(formUID, ref pVal, ref bubbleEvent); break;
             }
         }
 
@@ -420,6 +421,7 @@ namespace Subtitution.Processor
                                             {
                                                 throw new Exception();
                                             }
+                                            break;
                                         }
                                         else
                                         {
@@ -436,6 +438,7 @@ namespace Subtitution.Processor
                         }
                         finally
                         {
+                            TemplateLoad(ref oForm);
                             oProgressBar.Stop();
                             if (oForm != null) oForm.Freeze(false);
                         }
@@ -466,6 +469,10 @@ namespace Subtitution.Processor
             return code;
         }
 
+        /// <summary>
+        /// Select all item in row
+        /// double click at header
+        /// </summary>
         private void ChangeComp_SelectAll(string formUID, ref ItemEvent pVal, ref bool bubbleEvent)
         {
             if (bubbleEvent)
@@ -488,6 +495,37 @@ namespace Subtitution.Processor
                         {
                             oMtx.Columns.Item("cCheck").Cells.Item(i).Specific.Checked = true;
                         }
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Link button No. WO
+        /// </summary>
+        private void ChangeComp_LinkPressed(string formUID, ref ItemEvent pVal, ref bool bubbleEvent)
+        {
+            Form oForm = oSBOApplication.Forms.Item(formUID);
+            Matrix oMtx = oForm.Items.Item("mt_1").Specific;
+            Recordset oRec = oSBOCompany.GetBusinessObject(BoObjectTypes.BoRecordset);
+
+            if (pVal.ColUID == "cNoWo")
+            {
+                if (bubbleEvent)
+                {
+                    if(pVal.BeforeAction == true)
+                    {
+                        string docNum = oForm.Items.Item("mt_1").Specific.Columns(pVal.ColUID).Cells.Item(pVal.Row).Specific.Value;
+                        oRec.DoQuery("SELECT \"DocEntry\" FROM OWOR WHERE \"DocNum\" = '"+ docNum + "'");
+
+                        oForm.Items.Item("mt_1").Specific.Columns(pVal.ColUID).Cells.Item(pVal.Row).Specific.Value = oRec.Fields.Item("DocEntry").Value;
+                    }
+                    else
+                    {
+                        string docNum = oForm.Items.Item("mt_1").Specific.Columns(pVal.ColUID).Cells.Item(pVal.Row).Specific.Value;
+                        oRec.DoQuery("SELECT \"DocNum\" FROM OWOR WHERE \"DocEntry\" = '" + docNum + "'");
+
+                        oForm.Items.Item("mt_1").Specific.Columns(pVal.ColUID).Cells.Item(pVal.Row).Specific.Value = oRec.Fields.Item("DocNum").Value;
                     }
                 }
             }

@@ -78,9 +78,11 @@ namespace Subtitution.Processor
                 dtSource.SetValue("U_SOL_UPDATE", 0, updDate.ToString("yyyyMMdd", CultureInfo.InvariantCulture));
                 dtSource.SetValue("U_SOL_UPTIME", 0, updTime);
 
-                //oForm.Items.Item("tUpDt").Enabled = false;
-                //oForm.Items.Item("tUpDt").Click();
-                //oForm.Items.Item("tUpTm").Enabled = false;
+                EditText oEdit = oForm.Items.Item("tEdit").Specific;
+                oEdit.Active = true;
+
+                oForm.Items.Item("tUpDt").Enabled = false;
+                oForm.Items.Item("tUpTm").Enabled = false;
 
                 Utils.releaseObject(dtSource);
             }
