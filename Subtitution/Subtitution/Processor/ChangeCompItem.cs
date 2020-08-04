@@ -366,6 +366,7 @@ namespace Subtitution.Processor
 
                         ProgressBar oProgressBar = oSBOApplication.StatusBar.CreateProgressBar("Replace Work Order", oMtx.RowCount, true);
                         oProgressBar.Text = "Replace Work Order...";
+                        int progress = 0;
 
                         try
                         {
@@ -393,10 +394,10 @@ namespace Subtitution.Processor
                                         string b = oForm.Items.Item("tComItmCd").Specific.Value;
                                         if (oProd.Lines.ItemNo == b)
                                         {
-                                            double a = Utils.SBOToWindowsNumberWithoutCurrency(oMtx.Columns.Item("cAltQty").Cells.Item(i).Specific.Value);
                                             oProd.Lines.SetCurrentLine(j);
                                             oProd.Lines.ItemNo = oForm.Items.Item("tAltItmCd").Specific.Value;
-                                            oProd.Lines.PlannedQuantity = a;
+                                            string altQty = oMtx.Columns.Item("cAltQty").Cells.Item(i).Specific.Value;
+                                            oProd.Lines.PlannedQuantity = Convert.ToDouble(altQty.Replace(".", ","));
 
                                             int retCode = oProd.Update();
                                             if (retCode == 0)
@@ -429,12 +430,18 @@ namespace Subtitution.Processor
                                         }
                                     }
                                 }
+
+                                progress += 1;
+                                oProgressBar.Value = progress;
                             }
+
                             oSBOApplication.StatusBar.SetText("Success change component item.", SAPbouiCOM.BoMessageTime.bmt_Short, SAPbouiCOM.BoStatusBarMessageType.smt_Success);
                         }
                         catch (Exception ex)
                         {
+                            bubbleEvent = false;
                             oSBOApplication.MessageBox(ex.Message);
+                            oSBOCompany.EndTransaction(SAPbobsCOM.BoWfTransOpt.wf_RollBack);
                         }
                         finally
                         {
@@ -513,10 +520,10 @@ namespace Subtitution.Processor
             {
                 if (bubbleEvent)
                 {
-                    if(pVal.BeforeAction == true)
+                    if (pVal.BeforeAction == true)
                     {
                         string docNum = oForm.Items.Item("mt_1").Specific.Columns(pVal.ColUID).Cells.Item(pVal.Row).Specific.Value;
-                        oRec.DoQuery("SELECT \"DocEntry\" FROM OWOR WHERE \"DocNum\" = '"+ docNum + "'");
+                        oRec.DoQuery("SELECT \"DocEntry\" FROM OWOR WHERE \"DocNum\" = '" + docNum + "'");
 
                         oForm.Items.Item("mt_1").Specific.Columns(pVal.ColUID).Cells.Item(pVal.Row).Specific.Value = oRec.Fields.Item("DocEntry").Value;
                     }

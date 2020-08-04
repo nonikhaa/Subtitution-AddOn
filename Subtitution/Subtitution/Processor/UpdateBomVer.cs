@@ -149,6 +149,11 @@ namespace Subtitution.Processor
 
                     try
                     {
+                        if (!oSBOCompany.InTransaction)
+                        {
+                            oSBOCompany.StartTransaction();
+                        }
+
                         string query = string.Empty;
                         if (oSBOCompany.DbServerType == BoDataServerTypes.dst_HANADB)
                         {
@@ -227,11 +232,14 @@ namespace Subtitution.Processor
                         {
                             oSBOApplication.MessageBox("Tidak ada data yang dapat di update.");
                         }
+
+                        oSBOCompany.EndTransaction(SAPbobsCOM.BoWfTransOpt.wf_Commit);
                     }
                     catch (Exception ex)
                     {
                         bubbleEvent = false;
                         oSBOApplication.MessageBox(ex.Message);
+                        oSBOCompany.EndTransaction(SAPbobsCOM.BoWfTransOpt.wf_RollBack);
                     }
                     finally
                     {
