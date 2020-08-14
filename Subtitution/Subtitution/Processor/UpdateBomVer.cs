@@ -137,7 +137,7 @@ namespace Subtitution.Processor
                     DBDataSource dtSource = null;
                     dtSource = oForm.DataSources.DBDataSources.Item("@SOL_UPBOMVER_H");
                     string lastDate = dtSource.GetValue("U_SOL_UPDATE", 0);
-                    string lastTime = dtSource.GetValue("U_SOL_UPTIME", 0);
+                    string lastTime = Convert.ToString(int.Parse(dtSource.GetValue("U_SOL_UPTIME", 0).Replace(":", "")));
 
                     // Get a handle to the UDO
                     oGeneralService = sCmp.GetGeneralService("BOMVER");
@@ -157,7 +157,7 @@ namespace Subtitution.Processor
                         string query = string.Empty;
                         if (oSBOCompany.DbServerType == BoDataServerTypes.dst_HANADB)
                         {
-                            query = "CALL SOL_SP_UPDTBOM_GETDIFFBOM('" + lastDate + "')";
+                            query = "CALL SOL_SP_UPDTBOM_GETDIFFBOM('" + lastDate + "', '" + lastTime + "')";
                         }
                         oRecBomSap.DoQuery(query);
 
@@ -192,7 +192,7 @@ namespace Subtitution.Processor
 
                                         // update versi di bom sap
                                         UpdateBOM(itemCodeFG, version, ref bubbleEvent);
-                                        
+
                                     }
                                     else // jika bom belum ada di bom version
                                     {
@@ -243,7 +243,7 @@ namespace Subtitution.Processor
                     }
                     finally
                     {
-                        if(oProgressBar != null)
+                        if (oProgressBar != null)
                         {
                             oProgressBar.Stop();
                             Utils.releaseObject(oProgressBar);

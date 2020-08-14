@@ -239,8 +239,8 @@ namespace Subtitution
         #region Create FMS
         private void CreateFMS()
         {
-            Utils.CreateQueryCategory(oSBOCompany, "ADDON - Alternative Item Master Data");
-            string queryCategory = "ADDON - Alternative Item Master Data";
+            Utils.CreateQueryCategory(oSBOCompany, "ADDON - Substitution Addon");
+            string queryCategory = "ADDON - Substitution Addon";
 
             if (oSBOCompany.DbServerType == BoDataServerTypes.dst_HANADB)
             {
